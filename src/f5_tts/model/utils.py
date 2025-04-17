@@ -131,6 +131,31 @@ def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
     return vocab_char_map, vocab_size
 
 
+# process japanese text
+
+
+def process_japanese_text(text_list):
+    """
+    处理日语文本，保留原始字符而不进行拼音转换
+    
+    参数:
+        text_list: 文本列表
+        
+    返回:
+        处理后的文本列表，每个文本是一个字符列表
+    """
+    final_text_list = []
+    custom_trans = str.maketrans(
+        {";": ",", """: '"', """: '"', "'": "'", "'": "'"}
+    )  # 自定义转换，处理特殊字符
+    
+    for text in text_list:
+        char_list = list(text.translate(custom_trans))
+        final_text_list.append(char_list)
+        
+    return final_text_list
+
+
 # convert char to pinyin
 
 
@@ -145,8 +170,24 @@ def convert_char_to_pinyin(text_list, polyphone=True):
     )  # add custom trans here, to address oov
 
     def is_chinese(c):
+        # 更精确的中文字符范围，不包括日语字符
         return (
-            "\u3100" <= c <= "\u9fff"  # common chinese characters
+            ('\u4E00' <= c <= '\u9FFF') or  # CJK统一汉字
+            ('\u3400' <= c <= '\u4DBF') or  # CJK统一汉字扩展A
+            ('\u20000' <= c <= '\u2A6DF') or  # CJK统一汉字扩展B
+            ('\u2A700' <= c <= '\u2B73F') or  # CJK统一汉字扩展C
+            ('\u2B740' <= c <= '\u2B81F') or  # CJK统一汉字扩展D
+            ('\u2B820' <= c <= '\u2CEAF') or  # CJK统一汉字扩展E
+            ('\u2CEB0' <= c <= '\u2EBEF') or  # CJK统一汉字扩展F
+            ('\u30000' <= c <= '\u3134F') or  # CJK统一汉字扩展G
+            ('\uF900' <= c <= '\uFAFF')  # CJK兼容汉字
+        )
+        
+    def is_japanese(c):
+        return (
+            "\u3040" <= c <= "\u309f" or  # 平假名
+            "\u30a0" <= c <= "\u30ff" or  # 片假名
+            "\uff66" <= c <= "\uff9f"  # 半角片假名
         )
 
     for text in text_list:
@@ -168,11 +209,19 @@ def convert_char_to_pinyin(text_list, polyphone=True):
                 for c in seg:
                     if ord(c) < 256:
                         char_list.extend(c)
+                    elif is_japanese(c):
+                        char_list.append(c)
                     elif is_chinese(c):
-                        char_list.append(" ")
+                        if not char_list or not is_japanese(char_list[-1]):
+                            char_list.append(" ")
                         char_list.extend(lazy_pinyin(c, style=Style.TONE3, tone_sandhi=True))
                     else:
-                        char_list.append(c)
+                        if c not in "。，、；：？！《》【】—…":
+                            if not char_list or not is_japanese(char_list[-1]):
+                                char_list.append(" ")
+                            char_list.extend(lazy_pinyin(c, style=Style.TONE3, tone_sandhi=True))
+                        else:  # if is zh punc
+                            char_list.append(c)
         final_text_list.append(char_list)
 
     return final_text_list

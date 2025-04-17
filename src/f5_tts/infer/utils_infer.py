@@ -30,6 +30,7 @@ from f5_tts.model import CFM
 from f5_tts.model.utils import (
     get_tokenizer,
     convert_char_to_pinyin,
+    process_japanese_text,
 )
 
 _ref_audio_cache = {}
@@ -394,6 +395,7 @@ def infer_process(
     speed=speed,
     fix_duration=fix_duration,
     device=device,
+    language="zh",  # 默认为中文，可以设置为 "ja" 表示日语
 ):
     # Split the input text into batches
     audio, sr = torchaudio.load(ref_audio)
@@ -421,6 +423,7 @@ def infer_process(
             speed=speed,
             fix_duration=fix_duration,
             device=device,
+            language=language,  # 传递语言参数
         )
     )
 
@@ -446,6 +449,7 @@ def infer_batch_process(
     device=None,
     streaming=False,
     chunk_size=2048,
+    language="zh",  # 默认为中文，可以设置为 "ja" 表示日语
 ):
     audio, sr = ref_audio
     if audio.shape[0] > 1:
@@ -472,7 +476,14 @@ def infer_batch_process(
 
         # Prepare the text
         text_list = [ref_text + gen_text]
-        final_text_list = convert_char_to_pinyin(text_list)
+        
+        # 根据语言类型选择不同的文本处理方法
+        if language == "ja":
+            # 日语文本处理
+            final_text_list = process_japanese_text(text_list)
+        else:
+            # 默认使用中文处理方法
+            final_text_list = convert_char_to_pinyin(text_list)
 
         ref_audio_len = audio.shape[-1] // hop_length
         if fix_duration is not None:

@@ -42,16 +42,16 @@ def graceful_exit():
     finally:
         if executor is not None:
             executor.shutdown(wait=False)
-def whisper_transcribe(audio_path, model_size="small"):
+def whisper_transcribe(audio_path, model_size="large", language="ja"):
     model = whisper.load_model(model_size)  # model size:tiny, base, small, medium, large
-    result = model.transcribe(audio_path,language="zh",fp16=False)
+    result = model.transcribe(audio_path, language=language, fp16=False)
     return result["text"]
-def translate_audio_to_text(audio_dir):
+def translate_audio_to_text(audio_dir, language="ja"):
     audio_text_pairs = []
     for file in os.listdir(audio_dir):
         if file.endswith(('.wav', '.mp3')):  
             file_path = os.path.join(audio_dir, file)
-            text = whisper_transcribe(file_path)
+            text = whisper_transcribe(file_path, language=language)
             audio_text_pairs.append((file_path, text))
     return audio_text_pairs
 
@@ -128,9 +128,16 @@ def save_prepped_dataset(out_dir, result, duration_list, text_vocab_set):
     print(f"For {dataset_name}, vocab size is: {len(text_vocab_set)}")
     print(f"For {dataset_name}, total {sum(duration_list) / 3600:.2f} hours")
 
-def prepare_csv_wavs_dir(input_dir, num_workers=None):
-
-    audio_path_text_pairs = translate_audio_to_text(input_dir)
+def prepare_csv_wavs_dir(input_dir, num_workers=None, language="ja"):
+    """
+    准备音频文件和文本对，支持多语言
+    
+    参数:
+        input_dir: 输入目录，包含音频文件
+        num_workers: 工作线程数
+        language: 语言代码，默认为日语 "ja"，也支持中文 "zh"，英语 "en" 等
+    """
+    audio_path_text_pairs = translate_audio_to_text(input_dir, language=language)
 
     total_files = len(audio_path_text_pairs)
 
@@ -174,22 +181,33 @@ def prepare_csv_wavs_dir(input_dir, num_workers=None):
 
     # Batch process text conversion
     raw_texts = [item[1] for item in processed]
-    # converted_texts = batch_convert_texts(raw_texts, polyphone, batch_size=BATCH_SIZE)
-
+    
+    # 对于日语，直接使用原始文本，不进行拼音转换
+    # 对于中文，可以使用 convert_char_to_pinyin 函数进行转换
+    
     # Prepare final results
     sub_result = []
     durations = []
     vocab_set = set()
 
-    for (audio_path, _, duration), conv_text in zip(processed, raw_texts):
-        sub_result.append({"audio_path": audio_path, "text": conv_text, "duration": duration})
+    for (audio_path, _, duration), text in zip(processed, raw_texts):
+        sub_result.append({"audio_path": audio_path, "text": text, "duration": duration})
         durations.append(duration)
-        vocab_set.update(list(conv_text))
+        vocab_set.update(list(text))
 
     return sub_result, durations, vocab_set
 
-def prepare_and_save_set(inp_dir, out_dir, num_workers: int = None):
-    sub_result, durations, vocab_set = prepare_csv_wavs_dir(inp_dir, num_workers=num_workers)
+def prepare_and_save_set(inp_dir, out_dir, num_workers: int = None, language: str = "ja"):
+    """
+    准备并保存数据集
+    
+    参数:
+        inp_dir: 输入目录
+        out_dir: 输出目录
+        num_workers: 工作线程数
+        language: 语言代码，默认为日语 "ja"
+    """
+    sub_result, durations, vocab_set = prepare_csv_wavs_dir(inp_dir, num_workers=num_workers, language=language)
     save_prepped_dataset(out_dir, sub_result, durations, vocab_set)
 
 def cli():
@@ -214,9 +232,10 @@ Examples:
         parser.add_argument("inp_dir", type=str, help="Input directory containing the data.")
         parser.add_argument("out_dir", type=str, help="Output directory to save the prepared data.")
         parser.add_argument("--workers", type=int, help=f"Number of worker threads (default: {MAX_WORKERS})")
+        parser.add_argument("--language", type=str, default="ja", help="Language code (default: ja for Japanese)")
         args = parser.parse_args()
 
-        prepare_and_save_set(args.inp_dir, args.out_dir,num_workers=args.workers)
+        prepare_and_save_set(args.inp_dir, args.out_dir, num_workers=args.workers, language=args.language)
     except KeyboardInterrupt:
         print("\nOperation cancelled by user. Cleaning up...")
         if executor is not None:

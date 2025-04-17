@@ -1,0 +1,13 @@
+# F5TTS_v1_Base | E2TTS_Base
+ckpt_file = "/home/lqx/code/F5-TTS/ckpts/JP/model_21999120.pt"
+vocab_file = "/home/lqx/code/F5-TTS/ckpts/JP/vocab_japanese.txt"
+ref_audio = "/home/lqx/code/F5-TTS/tests/ja_sample1.mp3"
+# If an empty "", transcribes the reference audio automatically.
+ref_text = ""
+gen_text = "絆があれば、なんだって乗り越えられると思うんです！…てへ、なんちって。"
+# File with text to generate. Ignores the text above.
+gen_file = ""
+remove_silence = false
+output_dir = "/home/lqx/code/F5-TTS/output"
+model_cfg = "/home/lqx/code/F5-TTS/src/f5_tts/configs/F5TTS_Japanese.yaml"
+language = "ja"

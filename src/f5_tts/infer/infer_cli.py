@@ -168,6 +168,13 @@ parser.add_argument(
     type=str,
     help="Specify the device to run on",
 )
+parser.add_argument(
+    "--language",
+    type=str,
+    choices=["zh", "ja"],
+    default="zh",
+    help="Specify the language type: zh (Chinese) or ja (Japanese)",
+)
 args = parser.parse_args()
 
 
@@ -210,6 +217,7 @@ sway_sampling_coef = args.sway_sampling_coef or config.get("sway_sampling_coef",
 speed = args.speed or config.get("speed", speed)
 fix_duration = args.fix_duration or config.get("fix_duration", fix_duration)
 device = args.device or config.get("device", device)
+language = args.language or config.get("language", "zh")
 
 
 # patches for pip pkg user
@@ -339,6 +347,7 @@ def main():
             speed=speed,
             fix_duration=fix_duration,
             device=device,
+            language=language,  # 传递语言参数
         )
         generated_audio_segments.append(audio_segment)
 
