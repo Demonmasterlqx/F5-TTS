@@ -44,7 +44,8 @@ from f5_tts.infer.utils_infer import (
 
 
 DEFAULT_TTS_MODEL = "F5-TTS_v1"
-tts_model_choice = DEFAULT_TTS_MODEL
+F5TTS_Base= "F5TTS_Base"
+tts_model_choice = F5TTS_Base
 
 DEFAULT_TTS_MODEL_CFG = [
     "hf://SWivid/F5-TTS/F5TTS_v1_Base/model_1250000.safetensors",

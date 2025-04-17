@@ -1,20 +1,21 @@
 # F5TTS_v1_Base | E2TTS_Base
-model = "F5TTS_v1_Base"
-ref_audio = "infer/examples/multi/main.flac"
+# model = "F5TTS_v1_Base"
+ckpt_file = "/home/lqx/code/F5-TTS/ckpts/F5TTS_Base/model_1200000.safetensors"
+ref_audio = "/home/lqx/code/F5-TTS/src/f5_tts/infer/examples/multi/main.flac"
 # If an empty "", transcribes the reference audio automatically.
 ref_text = ""
 gen_text = ""
 # File with text to generate. Ignores the text above.
-gen_file = "infer/examples/multi/story.txt"
+gen_file = "/home/lqx/code/F5-TTS/src/f5_tts/infer/examples/multi/story.txt"
 remove_silence = true
 output_dir = "tests"
-output_file = "infer_cli_story.wav"
+output_file = "/home/lqx/code/F5-TTS/src/f5_tts/infer_cli_story.wav"
 
 [voices.town]
-ref_audio = "infer/examples/multi/town.flac"
+ref_audio = "/home/lqx/code/F5-TTS/src/f5_tts/infer/examples/multi/town.flac"
 ref_text = ""
 
 [voices.country]
-ref_audio = "infer/examples/multi/country.flac"
+ref_audio = "/home/lqx/code/F5-TTS/src/f5_tts/infer/examples/multi/country.flac"
 ref_text = ""
 
