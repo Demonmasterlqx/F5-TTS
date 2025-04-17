@@ -83,6 +83,8 @@ def main():
 
     checkpoint_path = str(files("f5_tts").joinpath(f"../../ckpts/{args.dataset_name}"))
 
+    print(f'checkpoint_path : {checkpoint_path}')
+
     # Model parameters based on experiment name
 
     if args.exp_name == "F5TTS_v1_Base":
