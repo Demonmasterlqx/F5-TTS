@@ -240,6 +240,14 @@ def load_model(
     use_ema=True,
     device=device,
 ):
+    print(f'model_cls : {model_cls}')
+    print(f'model_cfg : {model_cfg}')
+    print(f'ckpt_path : {ckpt_path}')
+    print(f'mel_spec_type : {mel_spec_type}')
+    print(f'vocab_file : {vocab_file}')
+    print(f'ode_method : {ode_method}')
+    print(f'use_ema : {use_ema}')
+    print(f'device : {device}')
     if vocab_file == "":
         vocab_file = str(files("f5_tts").joinpath("infer/examples/vocab.txt"))
     tokenizer = "custom"
@@ -292,6 +300,10 @@ def remove_silence_edges(audio, silence_threshold=-42):
 
 def preprocess_ref_audio_text(ref_audio_orig, ref_text, clip_short=True, show_info=print):
     show_info("Converting audio...")
+    print(f'ref_audio_orig: {ref_audio_orig}')
+    print(f'ref_text: {ref_text}')
+    print(f'clip_short: {clip_short}')
+    print(f'show_info: {show_info}')
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
         aseg = AudioSegment.from_file(ref_audio_orig)
 
@@ -343,6 +355,7 @@ def preprocess_ref_audio_text(ref_audio_orig, ref_text, clip_short=True, show_in
             ref_text = _ref_audio_cache[audio_hash]
         else:
             show_info("No reference text provided, transcribing reference audio...")
+            print(f'ref_audio : {ref_audio}')
             ref_text = transcribe(ref_audio)
             # Cache the transcribed text (not caching custom ref_text, enabling users to do manual tweak)
             _ref_audio_cache[audio_hash] = ref_text

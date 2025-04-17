@@ -181,6 +181,7 @@ config = tomli.load(open(args.config, "rb"))
 model = args.model or config.get("model", "F5TTS_v1_Base")
 ckpt_file = args.ckpt_file or config.get("ckpt_file", "")
 vocab_file = args.vocab_file or config.get("vocab_file", "")
+model_cfg = args.model_cfg or config.get("model_cfg", "")
 
 ref_audio = args.ref_audio or config.get("ref_audio", "infer/examples/basic/basic_ref_en.wav")
 ref_text = (

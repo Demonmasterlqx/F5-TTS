@@ -1,10 +1,12 @@
 # F5TTS_v1_Base | E2TTS_Base
 ckpt_file = "/home/lqx/code/F5-TTS/ckpts/F5TTS_Base/model_1200000.safetensors"
-ref_audio = "/home/lqx/code/F5-TTS/data/test_data/YZ-0052.wav"
+vocab_file = "/home/lqx/code/F5-TTS/ckpts/F5TTS_Base/vocab.txt"
+ref_audio = "/home/lqx/code/F5-TTS/src/f5_tts/infer/examples/multi/main.flac"
 # If an empty "", transcribes the reference audio automatically.
-ref_text = "我们还有事，先回去了。"
-gen_text = "我想睡觉"
+ref_text = ""
+gen_text = "我想睡觉哦，困死了"
 # File with text to generate. Ignores the text above.
 gen_file = ""
 remove_silence = false
 output_dir = "/home/lqx/code/F5-TTS/output"
+model_cfg = "/home/lqx/code/F5-TTS/src/f5_tts/configs/F5TTS_Base.yaml"
