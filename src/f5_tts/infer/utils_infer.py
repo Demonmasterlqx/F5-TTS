@@ -301,10 +301,10 @@ def remove_silence_edges(audio, silence_threshold=-42):
 
 def preprocess_ref_audio_text(ref_audio_orig, ref_text, clip_short=True, show_info=print):
     show_info("Converting audio...")
-    print(f'ref_audio_orig: {ref_audio_orig}')
-    print(f'ref_text: {ref_text}')
-    print(f'clip_short: {clip_short}')
-    print(f'show_info: {show_info}')
+    # print(f'ref_audio_orig: {ref_audio_orig}')
+    # print(f'ref_text: {ref_text}')
+    # print(f'clip_short: {clip_short}')
+    # print(f'show_info: {show_info}')
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
         aseg = AudioSegment.from_file(ref_audio_orig)
 

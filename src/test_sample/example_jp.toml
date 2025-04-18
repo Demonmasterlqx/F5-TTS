@@ -4,7 +4,7 @@ vocab_file = "/home/lqx/code/F5-TTS/ckpts/JP/vocab_japanese.txt"
 ref_audio = "/home/lqx/code/F5-TTS/tests/ja_sample1.mp3"
 # If an empty "", transcribes the reference audio automatically.
 ref_text = ""
-gen_text = "絆があれば、なんだって乗り越えられると思うんです！…てへ、なんちって。"
+gen_text = "きずながあれば、なんだってのりこえられるとおもうんです！"
 # File with text to generate. Ignores the text above.
 gen_file = ""
 remove_silence = false

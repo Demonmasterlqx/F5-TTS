@@ -17,6 +17,7 @@ from contextlib import contextmanager
 import torchaudio
 from datasets.arrow_writer import ArrowWriter
 from tqdm import tqdm
+import pykakasi  # 导入pykakasi库用于日语汉字转换
 
 CHUNK_SIZE = 100  # Number of files to process per worker batch
 THREAD_NAME_PREFIX = "AudioProcessor"
@@ -42,6 +43,27 @@ def graceful_exit():
     finally:
         if executor is not None:
             executor.shutdown(wait=False)
+def convert_kanji_to_kana(text):
+    """
+    将日语文本中的汉字转换为平假名
+    
+    参数:
+        text: 包含汉字的日语文本
+        
+    返回:
+        转换后的文本，汉字被替换为平假名
+    """
+    kks = pykakasi.kakasi()
+    result = kks.convert(text)
+    
+    # 将转换结果组合成一个字符串
+    converted_text = ''
+    for item in result:
+        # 使用平假名替换汉字
+        converted_text += item['hira']
+    
+    return converted_text
+
 def whisper_transcribe(audio_path, model_size="large", language="ja"):
     model = whisper.load_model(model_size)  # model size:tiny, base, small, medium, large
     result = model.transcribe(audio_path, language=language, fp16=False)
@@ -182,7 +204,10 @@ def prepare_csv_wavs_dir(input_dir, num_workers=None, language="ja"):
     # Batch process text conversion
     raw_texts = [item[1] for item in processed]
     
-    # 对于日语，直接使用原始文本，不进行拼音转换
+    # 对于日语，将汉字转换为平假名
+    if language == "ja":
+        print("Converting Japanese kanji to hiragana...")
+        raw_texts = [convert_kanji_to_kana(text) for text in raw_texts]
     # 对于中文，可以使用 convert_char_to_pinyin 函数进行转换
     
     # Prepare final results

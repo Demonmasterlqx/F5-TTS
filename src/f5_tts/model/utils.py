@@ -10,6 +10,29 @@ from torch.nn.utils.rnn import pad_sequence
 
 import jieba
 from pypinyin import lazy_pinyin, Style
+import pykakasi
+
+# 将日语汉字转换为平假名
+def convert_kanji_to_kana(text):
+    """
+    将日语文本中的汉字转换为平假名
+    
+    参数:
+        text: 包含汉字的日语文本
+        
+    返回:
+        转换后的文本，汉字被替换为平假名
+    """
+    kks = pykakasi.kakasi()
+    result = kks.convert(text)
+    
+    # 将转换结果组合成一个字符串
+    converted_text = ''
+    for item in result:
+        # 使用平假名替换汉字
+        converted_text += item['hira']
+    
+    return converted_text
 
 
 # seed everything
@@ -136,7 +159,7 @@ def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
 
 def process_japanese_text(text_list):
     """
-    处理日语文本，保留原始字符而不进行拼音转换
+    处理日语文本，将汉字转换为平假名
     
     参数:
         text_list: 文本列表
@@ -146,11 +169,14 @@ def process_japanese_text(text_list):
     """
     final_text_list = []
     custom_trans = str.maketrans(
-        {";": ",", """: '"', """: '"', "'": "'", "'": "'"}
+        {"‘": "'", "’": "'"}
     )  # 自定义转换，处理特殊字符
     
     for text in text_list:
-        char_list = list(text.translate(custom_trans))
+        # 先进行自定义字符转换
+        text = text.translate(custom_trans)
+        # 转换为字符列表
+        char_list = list(text)
         final_text_list.append(char_list)
         
     return final_text_list

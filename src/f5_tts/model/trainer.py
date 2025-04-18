@@ -335,6 +335,8 @@ class Trainer:
         else:
             skipped_epoch = 0
 
+        print(f'skipped_epoch : {skipped_epoch}')
+        print(f'self.epochs : {self.epochs}')
         for epoch in range(skipped_epoch, self.epochs):
             self.model.train()
             if exists(resumable_with_seed) and epoch == skipped_epoch:
@@ -396,9 +398,11 @@ class Trainer:
                         self.writer.add_scalar("lr", self.scheduler.get_last_lr()[0], global_update)
 
                 if global_update % self.last_per_updates == 0 and self.accelerator.sync_gradients:
+                    print(1)
                     self.save_checkpoint(global_update, last=True)
 
                 if global_update % self.save_per_updates == 0 and self.accelerator.sync_gradients:
+                    print(2)
                     self.save_checkpoint(global_update)
 
                     if self.log_samples and self.accelerator.is_local_main_process:
@@ -433,6 +437,8 @@ class Trainer:
                         )
                         self.model.train()
 
+        print(3)
         self.save_checkpoint(global_update, last=True)
+        print(3)
 
         self.accelerator.end_training()

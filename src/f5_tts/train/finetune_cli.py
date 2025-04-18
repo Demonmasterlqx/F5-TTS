@@ -8,7 +8,7 @@ from cached_path import cached_path
 from f5_tts.model import CFM, UNetT, DiT, Trainer
 from f5_tts.model.utils import get_tokenizer
 from f5_tts.model.dataset import load_dataset
-
+import pykakasi
 
 # -------------------------- Dataset Settings --------------------------- #
 target_sample_rate = 24000
@@ -69,6 +69,12 @@ def parse_args():
     parser.add_argument(
         "--bnb_optimizer",
         action="store_true",
+        help="Use 8-bit Adam optimizer from bitsandbytes",
+    )
+    parser.add_argument(
+        "--resumable_with_seed",
+        type=int,
+        default=666,
         help="Use 8-bit Adam optimizer from bitsandbytes",
     )
 
@@ -206,9 +212,10 @@ def main():
 
     train_dataset = load_dataset(args.dataset_name, tokenizer, mel_spec_kwargs=mel_spec_kwargs)
 
+    print(f'args.resumable_with_seed : {args.resumable_with_seed}')
     trainer.train(
         train_dataset,
-        resumable_with_seed=666,  # seed for shuffling dataset
+        resumable_with_seed=args.resumable_with_seed,  # seed for shuffling dataset
     )
 
 
