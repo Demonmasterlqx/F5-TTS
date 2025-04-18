@@ -1,6 +1,7 @@
 import torch
 import importlib
 import sys
+import os # 导入 os 模块
 
 from src.api.utils.config_parser import load_model_configs, load_config
 from f5_tts.model import CFM
@@ -54,8 +55,10 @@ class ModelManager:
             model_arc = model_cfg['model']['arch']
 
             # 加载 tokenizer
+            print(f'model_config["vocab_path"] : {model_config["vocab_path"]}')
             vocab_char_map, vocab_size = get_tokenizer(model_config["vocab_path"], model_cfg['model']['tokenizer'])
 
+            print(f'model_config["vocab_path"] : {model_config["vocab_path"]}')
             # 创建模型实例
             model = CFM(
                 transformer=model_cls(**model_arc, text_num_embeds=vocab_size, mel_dim=n_mel_channels),
@@ -73,6 +76,7 @@ class ModelManager:
                 vocab_char_map=vocab_char_map,
             ).to(device)
 
+            print(f'model_config["vocab_path"] : {model_config["vocab_path"]}')
             # 加载模型检查点
             model = load_checkpoint(model, model_config["model_path"], device)
 
