@@ -15,7 +15,7 @@ python finetune_cli.py \
 --finetune \
 --pretrain /home/lqx/code/F5-TTS/ckpts/manbo/model_21999120.pt \
 --tokenizer custom \
---tokenizer_path /home/lqx/code/F5-TTS/data/ja_manbo_after/vocab.txt \
+--tokenizer_path /home/lqx/code/F5-TTS/ckpts/manbo/vocab.txt \
 --log_samples \
 --resumable_with_seed 666 \
 --epochs 733334

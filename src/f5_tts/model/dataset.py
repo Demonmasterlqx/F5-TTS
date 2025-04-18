@@ -1,4 +1,5 @@
 import json
+import os
 from importlib.resources import files
 
 import torch
@@ -141,7 +142,7 @@ class CustomDataset(Dataset):
         if self.preprocessed_mel:
             mel_spec = torch.tensor(row["mel_spec"])
         else:
-            audio, source_sample_rate = torchaudio.load(audio_path)
+            audio, source_sample_rate = torchaudio.load(os.path.join("/home/lqx/code/F5-TTS/",audio_path))
 
             # make sure mono input
             if audio.shape[0] > 1:
