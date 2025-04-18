@@ -18,7 +18,8 @@ python finetune_cli.py \
 --tokenizer_path /home/lqx/code/F5-TTS/ckpts/manbo/vocab.txt \
 --log_samples \
 --resumable_with_seed 666 \
---epochs 733334
+--epochs 733334 \
+--keep_last_n_checkpoints 5 \
 
 # data prepare
 
