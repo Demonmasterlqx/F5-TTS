@@ -355,7 +355,10 @@ def main():
         text = re.sub(reg2, "", text)
         ref_audio_ = voices[voice]["ref_audio"]
         ref_text_ = voices[voice]["ref_text"]
-        gen_text_ = text.strip()
+        if language=="ja":
+            gen_text_=convert_kanji_to_kana(text.strip())
+        else :
+            gen_text_ = text.strip()
         print(f"Voice: {voice}")
         audio_segment, final_sample_rate, spectragram = infer_process(
             ref_audio_,

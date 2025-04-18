@@ -64,7 +64,7 @@ def convert_kanji_to_kana(text):
     
     return converted_text
 
-def whisper_transcribe(audio_path, model_size="large", language="ja"):
+def whisper_transcribe(audio_path, model_size="medium", language="ja"):
     model = whisper.load_model(model_size)  # model size:tiny, base, small, medium, large
     result = model.transcribe(audio_path, language=language, fp16=False)
     return result["text"]
