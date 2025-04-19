@@ -1,3 +1,4 @@
+import logging
 import base64
 import io
 import soundfile as sf
@@ -9,6 +10,9 @@ import re # 导入 re 模块用于解析文本标记
 
 from src.api.services.model_manager import ModelManager
 from f5_tts.infer.utils_infer import infer_process, preprocess_ref_audio_text, load_vocoder, device, mel_spec_type
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def convert_kanji_to_kana(text):
     """
@@ -52,82 +56,117 @@ class TtsService:
         Returns:
             生成的音频数据 (bytes)
         """
+        print("正在执行TTS推理...")
         model_instance = self.model_manager.get_model(model_name)
         if not model_instance:
             raise ValueError(f"模型 '{model_name}' 未找到或加载失败。")
 
         model_config = self.model_manager.get_model_config(model_name)
         if not model_config:
-             raise ValueError(f"模型配置 '{model_name}' 未找到。")
+            logger.error(f"模型配置 '{model_name}' 未找到。")
+            raise ValueError(f"模型配置 '{model_name}' 未找到。")
+        logger.info(f"Successfully retrieved model config for '{model_name}'.")
 
         supported_languages = model_config.get("language", []) # 从模型配置获取支持的语言列表
+        logger.info(f"Supported languages for model '{model_name}': {supported_languages}")
 
         # 确定使用的语言
         if language:
             if language not in supported_languages:
+                logger.error(f"模型 '{model_name}' 不支持语言 '{language}'. 支持的语言: {', '.join(supported_languages)}")
                 raise ValueError(f"模型 '{model_name}' 不支持语言 '{language}'。支持的语言: {', '.join(supported_languages)}")
             used_language = language
+            logger.info(f"Using specified language: '{used_language}'")
         elif supported_languages:
             used_language = supported_languages[0] # 使用模型配置中的第一个语言作为默认值
+            logger.info(f"Using default language from model config: '{used_language}'")
         else:
+            logger.error(f"模型 '{model_name}' 未指定支持的语言。")
             raise ValueError(f"模型 '{model_name}' 未指定支持的语言。")
 
         # 处理参考音频数据 (默认声音)
+        logger.info("Processing default voice reference audio data.")
+        logger.info(f'ref_audio_data.startswith("data:") : {ref_audio_data.startswith("data:")}')
         if ref_audio_data.startswith("data:"):
             # Base64编码的数据
+            logger.info("Reference audio data is Base64 encoded.")
             header, encoded = ref_audio_data.split(",", 1)
             audio_bytes = base64.b64decode(encoded)
+            # print(f'encoded : {encoded}')
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_audio_file:
                 tmp_audio_file.write(audio_bytes)
                 default_ref_audio_path = tmp_audio_file.name
+            # logger.info(f"Decoded Base64 audio saved to temporary file: {default_ref_audio_path}")
         else:
             # 文件路径
             default_ref_audio_path = ref_audio_data
+            # logger.info(f"Reference audio data is a file path: {default_ref_audio_path}")
 
         # 预处理默认声音的参考音频和文本
+        # logger.info(f"Preprocessing default reference audio and text: audio='{default_ref_audio_path}', text='{ref_text}'")
         default_processed_ref_audio_path, default_processed_ref_text = preprocess_ref_audio_text(default_ref_audio_path, ref_text)
+        logger.info(f"Preprocessing complete. Processed audio path: '{default_processed_ref_audio_path}', processed text: '{default_processed_ref_text}'")
+
 
         # 如果是日语，将汉字转换为片假名并打印处理前后的文本 (默认声音)
         if used_language == "ja":
-            print(f"原始 default_ref_text: {ref_text}")
+            logger.info(f"Language is Japanese. Converting Kanji to Kana for default reference text.")
+            logger.info(f"原始 default_ref_text: {ref_text}")
             default_processed_ref_text = convert_kanji_to_kana(default_processed_ref_text)
-            print(f"转换后 default_ref_text: {default_processed_ref_text}")
+            logger.info(f"转换后 default_ref_text: {default_processed_ref_text}")
 
         # 处理多声音配置
         processed_voices = {}
         if voices:
+            logger.info(f"Processing multiple voices configuration: {voices}")
             for voice_name, voice_config in voices.items():
+                logger.info(f"Processing voice: '{voice_name}'")
                 if "ref_audio" not in voice_config:
+                    logger.error(f"声音 '{voice_name}' 配置缺少 'ref_audio'。")
                     raise ValueError(f"声音 '{voice_name}' 配置缺少 'ref_audio'。")
                 
                 voice_ref_audio_data = voice_config["ref_audio"]
                 voice_ref_text = voice_config.get("ref_text", "")
+                logger.info(f"Voice '{voice_name}' config: ref_audio={'<present>' if voice_ref_audio_data else '<empty>'}, ref_text='{voice_ref_text}'")
+
 
                 # 处理参考音频数据 (其他声音)
                 if voice_ref_audio_data.startswith("data:"):
+                    logger.info(f"Reference audio data for voice '{voice_name}' is Base64 encoded.")
                     header, encoded = voice_ref_audio_data.split(",", 1)
                     audio_bytes = base64.b64decode(encoded)
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_audio_file:
                         tmp_audio_file.write(audio_bytes)
                         voice_ref_audio_path = tmp_audio_file.name
+                    logger.info(f"Decoded Base64 audio for voice '{voice_name}' saved to temporary file: {voice_ref_audio_path}")
                 else:
                     voice_ref_audio_path = voice_ref_audio_data
+                    logger.info(f"Reference audio data for voice '{voice_name}' is a file path: {voice_ref_audio_path}")
+
 
                 # 预处理其他声音的参考音频和文本
+                logger.info(f"Preprocessing reference audio and text for voice '{voice_name}': audio='{voice_ref_audio_path}', text='{voice_ref_text}'")
                 processed_voice_ref_audio_path, processed_voice_ref_text = preprocess_ref_audio_text(voice_ref_audio_path, voice_ref_text)
+                logger.info(f"Preprocessing complete for voice '{voice_name}'. Processed audio path: '{processed_voice_ref_audio_path}', processed text: '{processed_voice_ref_text}'")
+
 
                 # 如果是日语，将汉字转换为片假名并打印处理前后的文本 (其他声音)
                 if used_language == "ja":
-                    print(f"原始 {voice_name}_ref_text: {voice_ref_text}")
+                    logger.info(f"Language is Japanese. Converting Kanji to Kana for voice '{voice_name}' reference text.")
+                    logger.info(f"原始 {voice_name}_ref_text: {voice_ref_text}")
                     processed_voice_ref_text = convert_kanji_to_kana(processed_voice_ref_text)
-                    print(f"转换后 {voice_name}_ref_text: {processed_voice_ref_text}")
+                    logger.info(f"转换后 {voice_name}_ref_text: {processed_voice_ref_text}")
+
 
                 processed_voices[voice_name] = {
                     "ref_audio_path": processed_voice_ref_audio_path,
                     "ref_text": processed_voice_ref_text
                 }
+            logger.info(f"Finished processing multiple voices. Processed voices: {processed_voices}")
+
 
         # 解析文本中的声音标记并分割文本
+        logger.info(f"Parsing text for voice tags and splitting into chunks: '{gen_text}'")
         generated_audio_segments = []
         reg1 = r"(?=\[\w+\])"
         chunks = re.split(reg1, gen_text)
@@ -136,38 +175,50 @@ class TtsService:
         temp_files_to_clean = [] # 记录需要清理的临时文件
 
         try:
-            for text_chunk in chunks:
+            for i, text_chunk in enumerate(chunks):
+                logger.info(f"Processing text chunk {i}: '{text_chunk}'")
                 if not text_chunk.strip():
+                    logger.info("Text chunk is empty, skipping.")
                     continue
 
                 match = re.match(reg2, text_chunk)
                 if match:
                     voice_name = match[1]
                     current_text = re.sub(reg2, "", text_chunk).strip()
+                    logger.info(f"Identified voice tag: [{voice_name}]. Remaining text: '{current_text}'")
                 else:
                     voice_name = "main" # 默认声音
                     current_text = text_chunk.strip()
+                    logger.info(f"No voice tag found, using default voice 'main'. Text: '{current_text}'")
+
 
                 if not current_text:
+                    logger.info("Current text after removing voice tag is empty, skipping.")
                     continue
 
                 # 获取当前声音的参考音频和文本
                 if voice_name == "main":
                     current_ref_audio_path = default_processed_ref_audio_path
                     current_ref_text = default_processed_ref_text
+                    logger.info(f"Using default voice 'main'. Ref audio: '{current_ref_audio_path}', Ref text: '{current_ref_text}'")
                 elif voice_name in processed_voices:
                     current_ref_audio_path = processed_voices[voice_name]["ref_audio_path"]
                     current_ref_text = processed_voices[voice_name]["ref_text"]
+                    logger.info(f"Using voice '{voice_name}'. Ref audio: '{current_ref_audio_path}', Ref text: '{current_ref_text}'")
                 else:
+                    logger.error(f"未知的声音标记: [{voice_name}]")
                     raise ValueError(f"未知的声音标记: [{voice_name}]")
 
                 # 如果是日语，将汉字转换为片假名并打印处理前后的文本 (当前文本块)
                 if used_language == "ja":
-                    print(f"原始 text_chunk: {current_text}")
+                    logger.info(f"Language is Japanese. Converting Kanji to Kana for current text chunk.")
+                    logger.info(f"原始 text_chunk: {current_text}")
                     current_text = convert_kanji_to_kana(current_text)
-                    print(f"转换后 text_chunk: {current_text}")
+                    logger.info(f"转换后 text_chunk: {current_text}")
+
 
                 # 执行推理
+                logger.info(f"Calling infer_process for voice '{voice_name}' with text: '{current_text}'")
                 audio_segment, final_sample_rate, _ = infer_process(
                     current_ref_audio_path,
                     current_ref_text,
@@ -177,28 +228,40 @@ class TtsService:
                     mel_spec_type=mel_spec_type,
                     language=used_language
                 )
+                logger.info(f"infer_process completed for chunk {i}. Generated audio segment.")
                 generated_audio_segments.append(audio_segment)
 
             # 将所有生成的音频片段拼接起来
             if generated_audio_segments:
+                logger.info(f"Concatenating {len(generated_audio_segments)} audio segments.")
                 final_wave = np.concatenate(generated_audio_segments)
                 audio_buffer = io.BytesIO()
                 sf.write(audio_buffer, final_wave, final_sample_rate, format='wav')
                 audio_data_bytes = audio_buffer.getvalue()
+                logger.info("Audio segments concatenated and converted to bytes.")
                 return audio_data_bytes
             else:
+                logger.warning("No audio segments were generated.")
                 return b"" # 没有生成音频片段
 
+        except Exception as e:
+            logger.error(f"An error occurred during synthesis: {e}", exc_info=True)
+            raise e # Re-raise the exception after logging
+
         finally:
+            logger.info("Cleaning up temporary files.")
             # 清理临时文件 (默认声音)
             if ref_audio_data.startswith("data:") and os.path.exists(default_ref_audio_path):
+                logger.info(f"Removing temporary file: {default_ref_audio_path}")
                 os.remove(default_ref_audio_path)
             # 清理临时文件 (其他声音)
             if voices:
                 for voice_config in processed_voices.values():
                     if voice_config["ref_audio_path"].startswith(tempfile.gettempdir()): # 只清理临时文件
                          if os.path.exists(voice_config["ref_audio_path"]):
+                            logger.info(f"Removing temporary file: {voice_config['ref_audio_path']}")
                             os.remove(voice_config["ref_audio_path"])
+            logger.info("Temporary file cleanup complete.")
 
 
 # 示例用法 (需要实例化 ModelManager 和 TtsService)

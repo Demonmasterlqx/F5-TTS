@@ -1,0 +1,6 @@
+name: "japanese_manbo"
+description: "支持manbo日语的F5-TTS模型"
+language: ["ja"]
+model_path: "ckpts/ja_manbo_after/model_last.pt" # 从example_jp.toml获取
+vocab_path: "ckpts/ja_manbo_after/vocab.txt" # 从example_jp.toml获取
+model_cfg_path: "src/f5_tts/configs/F5TTS_Japanese.yaml" # 从example_jp.toml获取
