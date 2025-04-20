@@ -21,5 +21,20 @@ python finetune_cli.py \
 --epochs 733334 \
 --keep_last_n_checkpoints 5 \
 
+# multiple_maniang
+# skiped epochs 109996
+python finetune_cli.py \
+--exp_name F5TTS_Base \
+--dataset_name MaNiang_after \
+--learning_rate 1e-5 \
+--finetune \
+--pretrain /home/lqx/code/F5-TTS/ckpts/MaNiang_after/model_21999625.pt \
+--tokenizer custom \
+--tokenizer_path /home/lqx/code/F5-TTS/ckpts/JP/vocab_japanese.txt \
+--log_samples \
+--resumable_with_seed 666 \
+--epochs 110096 \
+--save_per_updates 5 \
+
 # data prepare
 
