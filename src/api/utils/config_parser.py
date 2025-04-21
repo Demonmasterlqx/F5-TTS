@@ -3,13 +3,13 @@ from pathlib import Path
 
 def load_config(config_path: str):
     """
-    加载YAML配置文件
+    加载YAML配置文件。
 
     Args:
-        config_path: 配置文件的路径
+        config_path: 配置文件的路径。
 
     Returns:
-        解析后的配置字典
+        解析后的配置字典。
     """
     with open(config_path, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
@@ -17,13 +17,22 @@ def load_config(config_path: str):
 
 def load_model_configs(models_dir: str = "src/api/config/models"):
     """
-    加载所有模型配置文件
+    加载指定目录下所有模型配置文件。
+
+    每个模型配置文件应为YAML格式，包含以下必需字段：
+    - name (str): 模型组的名称，作为唯一标识符。
+    - language (list[str]): 模型组支持的语言列表。
+    - model_path (str): 模型检查点文件 (.pt 或 .safetensors) 或包含多个检查点文件的目录路径。
+    - vocab_path (str): 词汇表文件 (.txt) 的路径。
+    - model_cfg_path (str): 模型结构配置文件 (.yaml) 的路径。
 
     Args:
-        models_dir: 存放模型配置文件的目录
+        models_dir: 存放模型配置文件的目录路径。
 
     Returns:
-        一个字典，key为模型名称，value为模型配置字典
+        一个字典，key为模型组的名称 (name字段)，value为对应的模型配置字典。
+        如果模型配置目录不存在或加载配置文件失败，返回空字典。
+        如果配置文件缺少必需字段或路径无效，将打印警告并忽略该文件。
     """
     model_configs = {}
     models_path = Path(models_dir)

@@ -16,46 +16,59 @@ logger = logging.getLogger(__name__)
 
 def convert_kanji_to_kana(text):
     """
-    将日语文本中的汉字转换为平假名
-    
-    参数:
-        text: 包含汉字的日语文本
-        
-    返回:
-        转换后的文本，汉字被替换为平假名
+    将日语文本中的汉字转换为平假名。
+
+    Args:
+        text: 包含汉字的日语文本。
+
+    Returns:
+        转换后的文本，汉字被替换为平假名。
     """
     kks = pykakasi.kakasi()
     result = kks.convert(text)
-    
+
     # 将转换结果组合成一个字符串
     converted_text = ''
     for item in result:
         # 使用平假名替换汉字
         converted_text += item['hira']
-    
+
     return converted_text
 
 class TtsService:
+    """
+    TTS 服务类，负责处理 TTS 推理请求。
+    """
     def __init__(self, model_manager: ModelManager):
+        """
+        初始化 TtsService。
+
+        Args:
+            model_manager: ModelManager 实例，用于获取模型。
+        """
         self.model_manager = model_manager
         # 假设 vocoder 是共享的，可以在服务启动时加载一次
         self.vocoder = load_vocoder(device=device) # 使用默认参数加载 vocoder
 
     def synthesize(self, group_name:str ,model_name: str, ref_audio_data: str, ref_text: str, gen_text: str, language: str = None, voices: dict = None):
         """
-        执行TTS推理
+        执行 TTS 推理。
 
         Args:
-            group_name: 使用的模型组
-            model_name: 使用的模型名称
-            ref_audio_data: 参考音频数据 (Base64编码或文件路径)
-            ref_text: 参考音频文本 (可选)
-            gen_text: 要生成的文本
-            language: 指定推理语言 (可选)
-            voices: 多声音配置 (可选)
+            group_name: 使用的模型组名称。
+            model_name: 使用的模型组中具体模型的名称（检查点文件名）。
+            ref_audio_data: 参考音频数据。可以是文件路径或 Base64 编码的音频数据。
+            ref_text: 参考音频对应的文本 (可选)。
+            gen_text: 需要生成语音的文本。支持使用 `[voice_name]` 标记进行多音色切换。
+            language: 指定推理使用的语言 (可选)。必须是指定模型组支持的语言之一。
+            voices: 多声音配置 (可选)。一个字典，键是声音名称，值是包含该声音参考音频和文本的字典。
 
         Returns:
-            生成的音频数据 (bytes)
+            生成的音频数据 (bytes)。
+
+        Raises:
+            ValueError: 如果模型组或模型未找到、加载失败，或请求参数无效。
+            Exception: 其他推理过程中发生的错误。
         """
         print("正在执行TTS推理...")
         model_instance = self.model_manager.get_model(group_name,model_name)

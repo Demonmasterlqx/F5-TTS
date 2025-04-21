@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class SynthesizeRequest(BaseModel):
+    """
+    TTS 推理请求体模型。
+    """
     group_name: str
     model_name: str
     ref_audio: str # 文件路径或Base64编码
@@ -22,7 +25,9 @@ class SynthesizeRequest(BaseModel):
 @router.get("/models")
 async def get_models(request: Request):
     """
-    获取可用模型列表
+    获取可用模型列表。
+
+    返回 API 服务当前加载的可用模型组列表及其基本信息。
     """
     logger.info("Received request for /models")
     model_manager = request.app.state.tts_service.model_manager
@@ -36,7 +41,19 @@ async def get_models(request: Request):
 @router.post("/synthesize")
 async def synthesize_audio(request: Request, synth_request: SynthesizeRequest):
     """
-    执行TTS推理
+    执行 TTS 推理。
+
+    根据提供的文本和参考音频生成语音。支持单声音和多音色合成。
+
+    Args:
+        request: FastAPI Request 对象。
+        synth_request: SynthesizeRequest 请求体对象。
+
+    Returns:
+        生成的音频数据 (StreamingResponse)。
+
+    Raises:
+        HTTPException: 如果请求参数无效或推理过程中发生错误。
     """
     # logger.info(f"Received synthesize request with parameters: model_name={synth_request.model_name}, ref_audio={'<present>' if synth_request.ref_audio else '<empty>'}, ref_text='{synth_request.ref_text}', gen_text='{synth_request.gen_text}', language='{synth_request.language}', voices={synth_request.voices}")
     logger.info("Received synthesize request")

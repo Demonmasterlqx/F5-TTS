@@ -1,38 +1,49 @@
 import torch
 import importlib
 import sys
-import os # 导入 os 模块
+import os
 
 from src.api.utils.config_parser import load_model_configs, load_config
 from f5_tts.model import CFM
 from f5_tts.infer.utils_infer import load_checkpoint, get_tokenizer, device, n_mel_channels, n_fft, hop_length, win_length, target_sample_rate, ode_method
 
 class ModelManager:
+    """
+    模型管理器，负责加载和管理模型配置以及模型实例。
+    """
     def __init__(self, models_dir: str = "src/api/config/models"):
+        """
+        初始化 ModelManager。
+
+        Args:
+            models_dir: 存放模型配置文件的目录路径。
+        """
         self.model_configs = load_model_configs(models_dir)
         self.loaded_models = {}
 
     def get_model_config(self, group_name: str):
         """
-        获取指定模型的配置
+        获取指定模型组的配置。
 
         Args:
-            model_name: 模型名称
+            group_name: 模型组的名称。
 
         Returns:
-            模型配置字典，如果模型不存在则返回None
+            模型配置字典，如果模型组不存在则返回None。
         """
         return self.model_configs.get(group_name)
 
     def get_model(self, group_name: str, model_name: str):
         """
-        获取指定模型的实例，如果未加载则加载并缓存
+        获取指定模型组中特定模型的实例。
+        如果模型未加载，则加载并缓存模型实例。
 
         Args:
-            model_name: 模型名称
+            group_name: 模型组的名称。
+            model_name: 模型组中具体模型的名称（检查点文件名）。
 
         Returns:
-            模型实例，如果模型不存在或加载失败则返回None
+            模型实例，如果模型组或模型不存在，或加载失败则返回None。
         """
         comprehensive_name=group_name+"."+model_name
         if comprehensive_name in self.loaded_models:
@@ -92,26 +103,22 @@ class ModelManager:
 
 # 示例用法
 if __name__ == '__main__':
+    # 示例用法
     model_manager = ModelManager()
     print("\n可用模型配置:")
     for name, config in model_manager.model_configs.items():
-        print(f"- {name}: {config['description']} ({config['language']})")
+        print(f"- {name}: {config.get('description', '无描述')} ({config.get('language', '未知语言')})")
+        if 'models' in config:
+            print(f"  包含模型文件: {', '.join(config['models'])}")
 
     # 尝试加载一个模型
-    model_name_to_load = "F5TTS_Base_Chinese" # 替换为你创建的中文模型名称
-    model_instance = model_manager.get_model(model_name_to_load)
+    # 假设存在一个模型组 'MyModelGroup' 包含模型文件 'my_model.pt'
+    group_name_to_load = "japanese_manbo" # 替换为你实际的模型组名称
+    model_name_to_load = "japanese_manbo.safetensors" # 替换为你实际的模型文件名称
+    model_instance = model_manager.get_model(group_name_to_load, model_name_to_load)
 
     if model_instance:
-        print(f"\n成功获取模型实例: {model_name_to_load}")
+        print(f"\n成功获取模型实例: {group_name_to_load}.{model_name_to_load}")
         # 在这里可以使用模型实例进行推理
     else:
-        print(f"\n无法获取模型实例: {model_name_to_load}")
-
-    model_name_to_load_jp = "F5TTS_Japanese" # 替换为你创建的日语模型名称
-    model_instance_jp = model_manager.get_model(model_name_to_load_jp)
-
-    if model_instance_jp:
-        print(f"\n成功获取模型实例: {model_name_to_load_jp}")
-        # 在这里可以使用模型实例进行推理
-    else:
-        print(f"\n无法获取模型实例: {model_name_to_load_jp}")
+        print(f"\n无法获取模型实例: {group_name_to_load}.{model_name_to_load}")
