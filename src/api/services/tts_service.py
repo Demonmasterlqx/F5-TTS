@@ -41,11 +41,12 @@ class TtsService:
         # 假设 vocoder 是共享的，可以在服务启动时加载一次
         self.vocoder = load_vocoder(device=device) # 使用默认参数加载 vocoder
 
-    def synthesize(self, model_name: str, ref_audio_data: str, ref_text: str, gen_text: str, language: str = None, voices: dict = None):
+    def synthesize(self, group_name:str ,model_name: str, ref_audio_data: str, ref_text: str, gen_text: str, language: str = None, voices: dict = None):
         """
         执行TTS推理
 
         Args:
+            group_name: 使用的模型组
             model_name: 使用的模型名称
             ref_audio_data: 参考音频数据 (Base64编码或文件路径)
             ref_text: 参考音频文本 (可选)
@@ -57,32 +58,32 @@ class TtsService:
             生成的音频数据 (bytes)
         """
         print("正在执行TTS推理...")
-        model_instance = self.model_manager.get_model(model_name)
+        model_instance = self.model_manager.get_model(group_name,model_name)
         if not model_instance:
             raise ValueError(f"模型 '{model_name}' 未找到或加载失败。")
 
-        model_config = self.model_manager.get_model_config(model_name)
+        model_config = self.model_manager.get_model_config(group_name)
         if not model_config:
-            logger.error(f"模型配置 '{model_name}' 未找到。")
-            raise ValueError(f"模型配置 '{model_name}' 未找到。")
-        logger.info(f"Successfully retrieved model config for '{model_name}'.")
+            logger.error(f"模型配置 '{group_name}' 未找到。")
+            raise ValueError(f"模型配置 '{group_name}' 未找到。")
+        logger.info(f"Successfully retrieved model config for '{group_name}'.")
 
         supported_languages = model_config.get("language", []) # 从模型配置获取支持的语言列表
-        logger.info(f"Supported languages for model '{model_name}': {supported_languages}")
+        logger.info(f"Supported languages for model '{group_name}': {supported_languages}")
 
         # 确定使用的语言
         if language:
             if language not in supported_languages:
-                logger.error(f"模型 '{model_name}' 不支持语言 '{language}'. 支持的语言: {', '.join(supported_languages)}")
-                raise ValueError(f"模型 '{model_name}' 不支持语言 '{language}'。支持的语言: {', '.join(supported_languages)}")
+                logger.error(f"模型 '{group_name}' 不支持语言 '{language}'. 支持的语言: {', '.join(supported_languages)}")
+                raise ValueError(f"模型 '{group_name}' 不支持语言 '{language}'。支持的语言: {', '.join(supported_languages)}")
             used_language = language
             logger.info(f"Using specified language: '{used_language}'")
         elif supported_languages:
             used_language = supported_languages[0] # 使用模型配置中的第一个语言作为默认值
             logger.info(f"Using default language from model config: '{used_language}'")
         else:
-            logger.error(f"模型 '{model_name}' 未指定支持的语言。")
-            raise ValueError(f"模型 '{model_name}' 未指定支持的语言。")
+            logger.error(f"模型 '{group_name}' 未指定支持的语言。")
+            raise ValueError(f"模型 '{group_name}' 未指定支持的语言。")
 
         # 处理参考音频数据 (默认声音)
         logger.info("Processing default voice reference audio data.")

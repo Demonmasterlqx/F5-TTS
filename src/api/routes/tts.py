@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class SynthesizeRequest(BaseModel):
+    group_name: str
     model_name: str
     ref_audio: str # 文件路径或Base64编码
     ref_text: str = "" # 可选，默认为空字符串
@@ -26,7 +27,7 @@ async def get_models(request: Request):
     logger.info("Received request for /models")
     model_manager = request.app.state.tts_service.model_manager
     models_info = [
-        {"name": config.get("name"), "language": config.get("language"), "description": config.get("description")}
+        {"name": config.get("name"), "language": config.get("language"), "description": config.get("description"), "models":config.get("models")}
         for config in model_manager.model_configs.values()
     ]
     logger.info(f"Returning {len(models_info)} models")
@@ -44,6 +45,7 @@ async def synthesize_audio(request: Request, synth_request: SynthesizeRequest):
     try:
         logger.info("Calling tts_service.synthesize...")
         audio_data_bytes = tts_service.synthesize(
+            synth_request.group_name,
             synth_request.model_name,
             synth_request.ref_audio,
             synth_request.ref_text,

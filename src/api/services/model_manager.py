@@ -12,7 +12,7 @@ class ModelManager:
         self.model_configs = load_model_configs(models_dir)
         self.loaded_models = {}
 
-    def get_model_config(self, model_name: str):
+    def get_model_config(self, group_name: str):
         """
         获取指定模型的配置
 
@@ -22,9 +22,9 @@ class ModelManager:
         Returns:
             模型配置字典，如果模型不存在则返回None
         """
-        return self.model_configs.get(model_name)
+        return self.model_configs.get(group_name)
 
-    def get_model(self, model_name: str):
+    def get_model(self, group_name: str, model_name: str):
         """
         获取指定模型的实例，如果未加载则加载并缓存
 
@@ -34,12 +34,13 @@ class ModelManager:
         Returns:
             模型实例，如果模型不存在或加载失败则返回None
         """
-        if model_name in self.loaded_models:
-            return self.loaded_models[model_name]
+        comprehensive_name=group_name+"."+model_name
+        if comprehensive_name in self.loaded_models:
+            return self.loaded_models[comprehensive_name]
 
-        model_config = self.get_model_config(model_name)
-        if not model_config:
-            print(f"模型 '{model_name}' 不存在配置。")
+        model_config = self.get_model_config(group_name)
+        if not model_config or (not model_name in model_config["models"]):
+            print(f"模型 '{comprehensive_name}' 不存在配置。")
             return None
 
         try:
@@ -78,15 +79,15 @@ class ModelManager:
 
             print(f'model_config["vocab_path"] : {model_config["vocab_path"]}')
             # 加载模型检查点
-            model = load_checkpoint(model, model_config["model_path"], device)
+            model = load_checkpoint(model, os.path.join(model_config["model_path"],model_name), device)
 
             # 缓存模型
-            self.loaded_models[model_name] = model
-            print(f"模型 '{model_name}' 加载成功并已缓存。")
+            self.loaded_models[comprehensive_name] = model
+            print(f"模型 '{comprehensive_name}' 加载成功并已缓存。")
             return model
 
         except Exception as e:
-            print(f"加载模型 '{model_name}' 失败: {e}")
+            print(f"加载模型 '{comprehensive_name}' 失败: {e}")
             return None
 
 # 示例用法
