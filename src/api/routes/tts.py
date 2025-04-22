@@ -19,7 +19,8 @@ class SynthesizeRequest(BaseModel):
     ref_audio: str # 文件路径或Base64编码
     ref_text: str = "" # 可选，默认为空字符串
     gen_text: str
-    language: str = None # 可选，指定推理语言
+    ref_language: str # 参考音频语言
+    gen_language: str # 生成文本语言
     voices: dict = {} # 可选，多声音配置
 
 @router.get("/models")
@@ -67,7 +68,8 @@ async def synthesize_audio(request: Request, synth_request: SynthesizeRequest):
             synth_request.ref_audio,
             synth_request.ref_text,
             synth_request.gen_text,
-            synth_request.language, # 传递语言参数
+            synth_request.ref_language, # 参考音频语言
+            synth_request.gen_language, # 生成文本语言
             synth_request.voices # 传递 voices 参数
         )
 

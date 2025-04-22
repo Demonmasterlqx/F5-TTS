@@ -1,6 +1,6 @@
 name: "F5TTS_Japanese"
 description: "支持日语的F5-TTS模型"
-language: ["ja"]
+language: ["zh","en","ja"]
 model_path: "ckpts/JP/model_21999120.pt" # 从example_jp.toml获取
 vocab_path: "ckpts/JP/vocab_japanese.txt" # 从example_jp.toml获取
 model_cfg_path: "src/f5_tts/configs/F5TTS_Japanese.yaml" # 从example_jp.toml获取

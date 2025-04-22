@@ -10,6 +10,7 @@ import re # 导入 re 模块用于解析文本标记
 
 from src.api.services.model_manager import ModelManager
 from f5_tts.infer.utils_infer import infer_process, preprocess_ref_audio_text, load_vocoder, device, mel_spec_type
+from f5_tts.model.utils import convert_str_to_pinyin
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ class TtsService:
         # 假设 vocoder 是共享的，可以在服务启动时加载一次
         self.vocoder = load_vocoder(device=device) # 使用默认参数加载 vocoder
 
-    def synthesize(self, group_name:str ,model_name: str, ref_audio_data: str, ref_text: str, gen_text: str, language: str = None, voices: dict = None):
+    def synthesize(self, group_name:str, model_name: str, ref_audio_data: str, ref_text: str, gen_text: str, ref_language: str, gen_language: str, voices: dict = None):
         """
         执行 TTS 推理。
 
@@ -60,7 +61,8 @@ class TtsService:
             ref_audio_data: 参考音频数据。可以是文件路径或 Base64 编码的音频数据。
             ref_text: 参考音频对应的文本 (可选)。
             gen_text: 需要生成语音的文本。支持使用 `[voice_name]` 标记进行多音色切换。
-            language: 指定推理使用的语言 (可选)。必须是指定模型组支持的语言之一。
+            ref_language: 参考音频的语言。必须是指定模型组支持的语言之一。
+            gen_language: 生成文本的语言。必须是指定模型组支持的语言之一。
             voices: 多声音配置 (可选)。一个字典，键是声音名称，值是包含该声音参考音频和文本的字典。
 
         Returns:
@@ -84,19 +86,15 @@ class TtsService:
         supported_languages = model_config.get("language", []) # 从模型配置获取支持的语言列表
         logger.info(f"Supported languages for model '{group_name}': {supported_languages}")
 
-        # 确定使用的语言
-        if language:
-            if language not in supported_languages:
-                logger.error(f"模型 '{group_name}' 不支持语言 '{language}'. 支持的语言: {', '.join(supported_languages)}")
-                raise ValueError(f"模型 '{group_name}' 不支持语言 '{language}'。支持的语言: {', '.join(supported_languages)}")
-            used_language = language
-            logger.info(f"Using specified language: '{used_language}'")
-        elif supported_languages:
-            used_language = supported_languages[0] # 使用模型配置中的第一个语言作为默认值
-            logger.info(f"Using default language from model config: '{used_language}'")
-        else:
-            logger.error(f"模型 '{group_name}' 未指定支持的语言。")
-            raise ValueError(f"模型 '{group_name}' 未指定支持的语言。")
+        # 验证参考音频语言
+        if ref_language not in supported_languages:
+            logger.error(f"模型 '{group_name}' 不支持参考音频语言 '{ref_language}'. 支持的语言: {', '.join(supported_languages)}")
+            raise ValueError(f"模型 '{group_name}' 不支持参考音频语言 '{ref_language}'。支持的语言: {', '.join(supported_languages)}")
+        
+        # 验证生成文本语言
+        if gen_language not in supported_languages:
+            logger.error(f"模型 '{group_name}' 不支持生成文本语言 '{gen_language}'. 支持的语言: {', '.join(supported_languages)}")
+            raise ValueError(f"模型 '{group_name}' 不支持生成文本语言 '{gen_language}'。支持的语言: {', '.join(supported_languages)}")
 
         # 处理参考音频数据 (默认声音)
         logger.info("Processing default voice reference audio data.")
@@ -122,12 +120,14 @@ class TtsService:
         logger.info(f"Preprocessing complete. Processed audio path: '{default_processed_ref_audio_path}', processed text: '{default_processed_ref_text}'")
 
 
-        # 如果是日语，将汉字转换为片假名并打印处理前后的文本 (默认声音)
-        if used_language == "ja":
-            logger.info(f"Language is Japanese. Converting Kanji to Kana for default reference text.")
-            logger.info(f"原始 default_ref_text: {ref_text}")
+        # 根据参考音频语言处理参考文本
+        if ref_language == "ja":
+            logger.info(f"参考音频语言是日语，将汉字转换为片假名")
             default_processed_ref_text = convert_kanji_to_kana(default_processed_ref_text)
-            logger.info(f"转换后 default_ref_text: {default_processed_ref_text}")
+        else:
+            default_processed_ref_text = convert_str_to_pinyin(default_processed_ref_text)
+            
+        logger.info(f"转换后 default_ref_text: {default_processed_ref_text}")
 
         # 处理多声音配置
         processed_voices = {}
@@ -164,13 +164,16 @@ class TtsService:
                 logger.info(f"Preprocessing complete for voice '{voice_name}'. Processed audio path: '{processed_voice_ref_audio_path}', processed text: '{processed_voice_ref_text}'")
 
 
-                # 如果是日语，将汉字转换为片假名并打印处理前后的文本 (其他声音)
-                if used_language == "ja":
-                    logger.info(f"Language is Japanese. Converting Kanji to Kana for voice '{voice_name}' reference text.")
-                    logger.info(f"原始 {voice_name}_ref_text: {voice_ref_text}")
+                # 根据声音的参考音频语言处理参考文本
+                logger.info(f"原始 {voice_name}_ref_text: {voice_ref_text}")
+                voice_ref_lang = voice_config.get("ref_language", ref_language)
+                if voice_ref_lang == "ja":
+                    logger.info(f"声音'{voice_name}'参考音频语言是日语，将汉字转换为片假名")
                     processed_voice_ref_text = convert_kanji_to_kana(processed_voice_ref_text)
-                    logger.info(f"转换后 {voice_name}_ref_text: {processed_voice_ref_text}")
+                else:
+                    processed_voice_ref_text = convert_str_to_pinyin(processed_voice_ref_text)
 
+                logger.info(f"转换后 {voice_name}_ref_text: {processed_voice_ref_text}")
 
                 processed_voices[voice_name] = {
                     "ref_audio_path": processed_voice_ref_audio_path,
@@ -223,12 +226,14 @@ class TtsService:
                     logger.error(f"未知的声音标记: [{voice_name}]")
                     raise ValueError(f"未知的声音标记: [{voice_name}]")
 
-                # 如果是日语，将汉字转换为片假名并打印处理前后的文本 (当前文本块)
-                if used_language == "ja":
-                    logger.info(f"Language is Japanese. Converting Kanji to Kana for current text chunk.")
-                    logger.info(f"原始 text_chunk: {current_text}")
+                # 根据生成文本语言处理文本
+                logger.info(f"原始 text_chunk: {current_text}")
+                if gen_language == "ja":
+                    logger.info(f"生成文本语言是日语，将汉字转换为片假名")
                     current_text = convert_kanji_to_kana(current_text)
-                    logger.info(f"转换后 text_chunk: {current_text}")
+                else:
+                    current_text = convert_str_to_pinyin(current_text)
+                logger.info(f"转换后 text_chunk: {current_text}")
 
 
                 # 执行推理
@@ -240,7 +245,7 @@ class TtsService:
                     model_instance,
                     self.vocoder,
                     mel_spec_type=mel_spec_type,
-                    language=used_language
+                    language=gen_language
                 )
                 logger.info(f"infer_process completed for chunk {i}. Generated audio segment.")
                 generated_audio_segments.append(audio_segment)

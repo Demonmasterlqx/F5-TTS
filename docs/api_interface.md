@@ -55,8 +55,13 @@ F5-TTS API服务提供文本到语音（TTS）推理功能，支持多种模型�
         -   `ref_audio` (string, 必需): 参考音频数据。可以是文件路径（API服务可访问的本地路径）或Base64编码的音频数据（推荐）。Base64编码数据应包含data URL前缀，例如 `data:audio/wav;base64,...`。
         -   `ref_text` (string, 可选): 参考音频对应的文本。如果提供，将用于辅助推理；如果为空字符串，API服务可能会尝试自动转录参考音频（取决于底层实现）。默认为空字符串。
         -   `gen_text` (string, 必需): 需要生成语音的文本。对于多音色合成，文本中可以使用 `[voice_name]` 标记来切换音色。
-        -   `language` (string, 可选): 指定推理使用的语言。必须是指定模型组支持的语言之一。如果未提供，将使用模型组配置中支持的第一个语言作为默认值。
+        -   `ref_language` (string, 必需): 参考音频的语言。必须是指定模型组支持的语言之一。
+        -   `gen_language` (string, 必需): 生成文本的语言。必须是指定模型组支持的语言之一。
         -   `voices` (object, 可选): 多声音配置。一个字典，键是声音名称（用于在 `gen_text` 中标记），值是包含该声音参考音频和文本的字典。默认为空字典。
+            -   `voice_name` (string): 声音名称。
+                -   `ref_audio` (string, 必需): 该声音的参考音频数据（文件路径或Base64编码）。
+                -   `ref_text` (string, 可选): 该声音参考音频对应的文本。默认为空字符串。
+                -   `ref_language` (string, 必需): 该声音参考音频的语言。
             -   `voice_name` (string): 声音名称。
                 -   `ref_audio` (string, 必需): 该声音的参考音频数据（文件路径或Base64编码）。
                 -   `ref_text` (string, 可选): 该声音参考音频对应的文本。默认为空字符串。
@@ -66,35 +71,39 @@ F5-TTS API服务提供文本到语音（TTS）推理功能，支持多种模型�
     -   格式: 音频数据 (例如，`audio/wav`)
     -   响应体: 生成的音频文件的二进制数据。
 
--   **请求示例 (单声音)**:
+    -   **请求示例 (单声音)**:
     ```json
     {
       "group_name": "chinese_base",
       "model_name": "F5TTS_Base_Chinese.pt",
       "ref_audio": "data:audio/wav;base64,..." , // Base64编码的参考音频数据
       "ref_text": "这是参考音频的文本。",
+      "ref_language": "ja", // 参考音频的语言
       "gen_text": "这是要生成的文本。",
-      "language": "zh"
+      "gen_language": "zh" // 生成文本的语言
     }
     ```
 
--   **请求示例 (多音色)**:
+    -   **请求示例 (多音色)**:
     ```json
     {
       "group_name": "chinese_base",
       "model_name": "F5TTS_Base_Chinese.pt",
       "ref_audio": "data:audio/wav;base64,...", // 默认声音 (main) 的Base64参考音频
       "ref_text": "", // 默认声音的参考文本
+      "ref_language": "ja", // 默认声音参考音频的语言
       "gen_text": "这是默认声音。[voice1]这是第一个声音。[main]又回到默认声音。",
-      "language": "zh",
+      "gen_language": "zh", // 生成文本的语言
       "voices": {
         "voice1": {
           "ref_audio": "data:audio/wav;base64,...", // 声音 'voice1' 的Base64参考音频
-          "ref_text": ""
+          "ref_text": "",
+          "ref_language": "en" // 该声音参考音频的语言
         },
         "voice2": {
           "ref_audio": "/path/to/voice2.wav", // 声音 'voice2' 的文件路径参考音频
-          "ref_text": "这是第二个声音的参考文本。"
+          "ref_text": "这是第二个声音的参考文本。",
+          "ref_language": "zh" // 该声音参考音频的语言
         }
       }
     }

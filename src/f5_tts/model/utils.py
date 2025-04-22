@@ -184,6 +184,18 @@ def process_japanese_text(text_list):
 # convert char to pinyin
 
 
+def convert_str_to_pinyin(text: str, polyphone: bool = True) -> str:
+    """将输入字符串转换为拼音字符串
+    
+    Args:
+        text: 输入字符串，可包含中文、英文、日文和符号
+        polyphone: 是否处理多音字，默认为True
+        
+    Returns:
+        转换后的拼音字符串，中文部分转换为拼音，其他字符保留原样
+    """
+    return ''.join(convert_char_to_pinyin([text], polyphone)[0])
+
 def convert_char_to_pinyin(text_list, polyphone=True):
     if jieba.dt.initialized is False:
         jieba.default_logger.setLevel(50)  # CRITICAL
