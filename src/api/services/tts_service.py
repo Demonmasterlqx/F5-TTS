@@ -10,6 +10,7 @@ import re # 导入 re 模块用于解析文本标记
 
 from src.api.services.model_manager import ModelManager
 from f5_tts.infer.utils_infer import infer_process, preprocess_ref_audio_text, load_vocoder, device, mel_spec_type
+from src.api.utils.japanese_detector import contains_japanese
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -224,11 +225,15 @@ class TtsService:
                     raise ValueError(f"未知的声音标记: [{voice_name}]")
 
                 # 如果是日语，将汉字转换为片假名并打印处理前后的文本 (当前文本块)
-                if used_language == "ja":
+                if contains_japanese(current_text):
                     logger.info(f"Language is Japanese. Converting Kanji to Kana for current text chunk.")
                     logger.info(f"原始 text_chunk: {current_text}")
                     current_text = convert_kanji_to_kana(current_text)
                     logger.info(f"转换后 text_chunk: {current_text}")
+                    this_part_language="ja"
+                else:
+                    this_part_language="nja"
+                
 
 
                 # 执行推理
@@ -240,7 +245,7 @@ class TtsService:
                     model_instance,
                     self.vocoder,
                     mel_spec_type=mel_spec_type,
-                    language=used_language
+                    language=this_part_language
                 )
                 logger.info(f"infer_process completed for chunk {i}. Generated audio segment.")
                 generated_audio_segments.append(audio_segment)
