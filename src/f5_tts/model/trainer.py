@@ -437,8 +437,6 @@ class Trainer:
                         )
                         self.model.train()
 
-        print(3)
         self.save_checkpoint(global_update, last=True)
-        print(3)
 
         self.accelerator.end_training()

@@ -18,6 +18,8 @@ import torchaudio
 from datasets.arrow_writer import ArrowWriter
 from tqdm import tqdm
 import pykakasi  # 导入pykakasi库用于日语汉字转换
+from pypinyin import lazy_pinyin, Style
+import jieba
 
 CHUNK_SIZE = 100  # Number of files to process per worker batch
 THREAD_NAME_PREFIX = "AudioProcessor"
@@ -64,17 +66,156 @@ def convert_kanji_to_kana(text):
     
     return converted_text
 
+def contains_japanese(text: str) -> bool:
+    """
+    判断字符串中是否包含日语字符
+    
+    参数:
+        text: 要检查的字符串
+        
+    返回:
+        bool: 如果包含日语字符返回True，否则返回False
+        
+    示例:
+        >>> contains_japanese("こんにちは")
+        True
+        >>> contains_japanese("hello")
+        False
+        >>> contains_japanese("日本語とEnglish混合")
+        True
+    """
+    # 定义日语字符的Unicode范围
+    hiragana_range = (0x3040, 0x309F)  # 平假名
+    katakana_range = (0x30A0, 0x30FF)  # 片假名
+    japanese_punctuation_range = (0x3000, 0x303F)  # 日语标点符号
+    
+    for char in text:
+        code = ord(char)
+        # 检查是否在平假名范围
+        if hiragana_range[0] <= code <= hiragana_range[1]:
+            return True
+        # 检查是否在片假名范围
+        if katakana_range[0] <= code <= katakana_range[1]:
+            return True
+            
+    return False
+
+def convert_char_to_pinyin(text_list, polyphone=True):
+    if jieba.dt.initialized is False:
+        jieba.default_logger.setLevel(50)  # CRITICAL
+        jieba.initialize()
+
+    final_text_list = []
+    custom_trans = str.maketrans(
+        {";": ",", "“": '"', "”": '"', "‘": "'", "’": "'"}
+    )  # add custom trans here, to address oov
+
+    def is_chinese(c):
+        # 更精确的中文字符范围，不包括日语字符
+        return (
+            ('\u4E00' <= c <= '\u9FFF') or  # CJK统一汉字
+            ('\u3400' <= c <= '\u4DBF') or  # CJK统一汉字扩展A
+            ('\u20000' <= c <= '\u2A6DF') or  # CJK统一汉字扩展B
+            ('\u2A700' <= c <= '\u2B73F') or  # CJK统一汉字扩展C
+            ('\u2B740' <= c <= '\u2B81F') or  # CJK统一汉字扩展D
+            ('\u2B820' <= c <= '\u2CEAF') or  # CJK统一汉字扩展E
+            ('\u2CEB0' <= c <= '\u2EBEF') or  # CJK统一汉字扩展F
+            ('\u30000' <= c <= '\u3134F') or  # CJK统一汉字扩展G
+            ('\uF900' <= c <= '\uFAFF')  # CJK兼容汉字
+        )
+        
+    def is_japanese(c):
+        return (
+            "\u3040" <= c <= "\u309f" or  # 平假名
+            "\u30a0" <= c <= "\u30ff" or  # 片假名
+            "\uff66" <= c <= "\uff9f"  # 半角片假名
+        )
+
+    for text in text_list:
+        char_list = []
+        text = text.translate(custom_trans)
+        for seg in jieba.cut(text):
+            seg_byte_len = len(bytes(seg, "UTF-8"))
+            if seg_byte_len == len(seg):  # if pure alphabets and symbols
+                if char_list and seg_byte_len > 1 and char_list[-1] not in " :'\"":
+                    char_list.append(" ")
+                char_list.extend(seg)
+            elif polyphone and seg_byte_len == 3 * len(seg):  # if pure east asian characters
+                seg_ = lazy_pinyin(seg, style=Style.TONE3, tone_sandhi=True)
+                for i, c in enumerate(seg):
+                    if is_chinese(c):
+                        char_list.append(" ")
+                    char_list.append(seg_[i])
+            else:  # if mixed characters, alphabets and symbols
+                for c in seg:
+                    if ord(c) < 256:
+                        char_list.extend(c)
+                    elif is_japanese(c):
+                        char_list.append(c)
+                    elif is_chinese(c):
+                        if not char_list or not is_japanese(char_list[-1]):
+                            char_list.append(" ")
+                        char_list.extend(lazy_pinyin(c, style=Style.TONE3, tone_sandhi=True))
+                    else:
+                        if c not in "。，、；：？！《》【】—…":
+                            if not char_list or not is_japanese(char_list[-1]):
+                                char_list.append(" ")
+                            char_list.extend(lazy_pinyin(c, style=Style.TONE3, tone_sandhi=True))
+                        else:  # if is zh punc
+                            char_list.append(c)
+        final_text_list.append(char_list)
+
+    return final_text_list
+
+def convert_list_to_str(text_list, polyphone=True):
+    """
+    使用 convert_char_to_pinyin 函数处理文本列表，
+    并将每个处理结果（字符/拼音列表）连接成一个字符串。
+
+    Args:
+        text_list (list[str]): 输入的字符串列表。
+        polyphone (bool, optional): 是否启用多音字处理 (传递给 convert_char_to_pinyin)。
+                                     Defaults to True.
+
+    Returns:
+        list[str]: 处理后的字符串列表，每个字符串对应输入列表中的一个元素。
+                   字符串中的各个部分（字符、拼音）会根据原函数逻辑用空格分隔。
+    """
+    # 1. 调用已经写好的 convert_char_to_pinyin 函数
+    # 这会得到一个列表的列表，例如 [['ni3', ' ', 'hao3'], ['world', ' ']]
+    processed_list_of_lists = convert_char_to_pinyin(text_list, polyphone=polyphone)
+
+    # 2. 将内部的列表连接成字符串
+    joined_string=""
+    for char_list in processed_list_of_lists:
+        # 使用空字符串连接列表中的所有元素。
+        # 因为 convert_char_to_pinyin 已经在需要的地方添加了 " " 元素，
+        # 所以直接连接即可保留原有的空格。
+        # print(f'[{char_list}]')
+        joined_string = joined_string+"".join(char_list)
+
+    # 3. 返回处理后的字符串列表
+    return joined_string
+
 def whisper_transcribe(audio_path, model_size="medium", language="ja"):
     model = whisper.load_model(model_size)  # model size:tiny, base, small, medium, large
-    result = model.transcribe(audio_path, language=language, fp16=False)
+    result = model.transcribe(audio_path, fp16=False)
     return result["text"]
 def translate_audio_to_text(audio_dir, language="ja"):
     audio_text_pairs = []
-    for file in os.listdir(audio_dir):
-        if file.endswith(('.wav', '.mp3')):  
-            file_path = os.path.join(audio_dir, file)
-            text = whisper_transcribe(file_path, language=language)
-            audio_text_pairs.append((file_path, text))
+    for root, _, files in os.walk(audio_dir):  # 递归遍历
+        for file in files:
+            if file.endswith(('.wav', '.mp3')):
+                file_path = os.path.join(root, file)
+                text = whisper_transcribe(file_path, language=language)
+                print(f'whisper_transcribe before {text}')
+                if(contains_japanese(text)):
+                    text=convert_kanji_to_kana(text)
+                else:
+                    text=convert_list_to_str(text)
+                print(f'whisper_transcribe after {text}')
+
+                audio_text_pairs.append((file_path, text))
     return audio_text_pairs
 
 def process_audio_file(audio_path, text):
@@ -132,6 +273,7 @@ def save_prepped_dataset(out_dir, result, duration_list, text_vocab_set):
     raw_arrow_path = out_dir / "raw.arrow"
     with ArrowWriter(path=raw_arrow_path.as_posix(), writer_batch_size=2) as writer:
         for line in tqdm(result, desc="Writing to raw.arrow ..."):
+            print("content writen into *.arrow"+f'{line}')
             writer.write(line)
 
     # Save durations to JSON
@@ -205,9 +347,8 @@ def prepare_csv_wavs_dir(input_dir, num_workers=None, language="ja"):
     raw_texts = [item[1] for item in processed]
     
     # 对于日语，将汉字转换为平假名
-    if language == "ja":
-        print("Converting Japanese kanji to hiragana...")
-        raw_texts = [convert_kanji_to_kana(text) for text in raw_texts]
+    print("Converting Japanese kanji to hiragana...")
+    # raw_texts = [(text) for text in raw_texts if ]
     # 对于中文，可以使用 convert_char_to_pinyin 函数进行转换
     
     # Prepare final results
