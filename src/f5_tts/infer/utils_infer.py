@@ -3,6 +3,7 @@
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from src.api.utils.japanese_detector import contains_japanese
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"  # for MPS device compatibility
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../../third_party/BigVGAN/")
@@ -16,6 +17,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 
+import pykakasi # 导入 pykakasi
+import re # 导入 re 模块用于解析文本标记
 import matplotlib.pylab as plt
 import numpy as np
 import torch
@@ -63,6 +66,27 @@ speed = 1.0
 fix_duration = None
 
 # -----------------------------------------
+
+def convert_kanji_to_kana(text):
+    """
+    将日语文本中的汉字转换为平假名。
+
+    Args:
+        text: 包含汉字的日语文本。
+
+    Returns:
+        转换后的文本，汉字被替换为平假名。
+    """
+    kks = pykakasi.kakasi()
+    result = kks.convert(text)
+
+    # 将转换结果组合成一个字符串
+    converted_text = ''
+    for item in result:
+        # 使用平假名替换汉字
+        converted_text += item['hira']
+
+    return converted_text
 
 
 # chunk text into smaller pieces
@@ -370,8 +394,11 @@ def preprocess_ref_audio_text(ref_audio_orig, ref_text, clip_short=True, show_in
         else:
             ref_text += ". "
 
-    print("\nref_text  ", ref_text)
 
+    if contains_japanese(ref_text):
+        ref_text=convert_kanji_to_kana(ref_text)
+
+    print("\nref_text  ", ref_text)
     return ref_audio, ref_text
 
 
@@ -427,16 +454,6 @@ def infer_process(
         )
     )
 
-def is_japanese(c):
-    return (
-        "\u3040" <= c <= "\u309f" or  # 平假名
-        "\u30a0" <= c <= "\u30ff" or  # 片假名
-        "\uff66" <= c <= "\uff9f"  # 半角片假名
-    )
-def has_japanese(text):
-    # Check if the text contains any Japanese characters
-    return any(is_japanese(c) for c in text)
-
 
 # infer batches
 
@@ -485,22 +502,17 @@ def infer_batch_process(
             local_speed = 0.3
 
         # Prepare the text
-        text_list = [ref_text ,gen_text]
+        text_list = [ref_text + gen_text]
         
         # 根据语言类型选择不同的文本处理方法
-        trans_text_list=[]
-        for taxt in text_list:
-            print(f"taxt: {taxt}")
-            if has_japanese(taxt):
-                # 日语文本处理
-                trans_text_list.append(process_japanese_text([taxt]))
-            else:
-                # 默认使用中文处理方法
-                trans_text_list.append(convert_char_to_pinyin([taxt]))
-        print(f"final_text_list: {trans_text_list}")
-        final_text_list = [[item for sublist in trans_text_list[0] for item in sublist]]+[[item for sublist in trans_text_list[1] for item in sublist]]
-        final_text_list = [item for sublist in final_text_list for item in sublist]
-        print(f"final_text_list: {final_text_list}")
+        # if language == "ja":
+        #     # 日语文本处理
+        #     final_text_list = process_japanese_text(text_list)
+        # else:
+        #     # 默认使用中文处理方法
+        final_text_list = convert_char_to_pinyin(text_list)
+        print("final_text_list", final_text_list)
+
         ref_audio_len = audio.shape[-1] // hop_length
         if fix_duration is not None:
             duration = int(fix_duration * target_sample_rate / hop_length)

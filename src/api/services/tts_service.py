@@ -181,6 +181,10 @@ class TtsService:
 
 
         # 解析文本中的声音标记并分割文本
+
+        if contains_japanese(gen_text):
+            gen_text=convert_kanji_to_kana(gen_text)
+
         logger.info(f"Parsing text for voice tags and splitting into chunks: '{gen_text}'")
         generated_audio_segments = []
         reg1 = r"(?=\[\w+\])"
