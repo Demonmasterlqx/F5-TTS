@@ -1,0 +1,6 @@
+name: "F5TTS_Base_before_add_ja"
+description: "支持中文和英文的基础F5-TTS模型"
+language: ["zh", "en","ja"]
+model_path: "ckpts/F5TTS_Base/model_1200000.safetensors" # 假设存在这个检查点
+vocab_path: "vocab.txt" # 假设项目根目录下有vocab.txt
+model_cfg_path: "ckpts/F5TTS_Base/F5TTS_Base.yaml"

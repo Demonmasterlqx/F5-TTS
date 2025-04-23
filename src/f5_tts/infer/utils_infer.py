@@ -427,6 +427,16 @@ def infer_process(
         )
     )
 
+def is_japanese(c):
+    return (
+        "\u3040" <= c <= "\u309f" or  # 平假名
+        "\u30a0" <= c <= "\u30ff" or  # 片假名
+        "\uff66" <= c <= "\uff9f"  # 半角片假名
+    )
+def has_japanese(text):
+    # Check if the text contains any Japanese characters
+    return any(is_japanese(c) for c in text)
+
 
 # infer batches
 
@@ -475,16 +485,22 @@ def infer_batch_process(
             local_speed = 0.3
 
         # Prepare the text
-        text_list = [ref_text + gen_text]
+        text_list = [ref_text ,gen_text]
         
         # 根据语言类型选择不同的文本处理方法
-        if language == "ja":
-            # 日语文本处理
-            final_text_list = process_japanese_text(text_list)
-        else:
-            # 默认使用中文处理方法
-            final_text_list = convert_char_to_pinyin(text_list)
-
+        trans_text_list=[]
+        for taxt in text_list:
+            print(f"taxt: {taxt}")
+            if has_japanese(taxt):
+                # 日语文本处理
+                trans_text_list.append(process_japanese_text([taxt]))
+            else:
+                # 默认使用中文处理方法
+                trans_text_list.append(convert_char_to_pinyin([taxt]))
+        print(f"final_text_list: {trans_text_list}")
+        final_text_list = [[item for sublist in trans_text_list[0] for item in sublist]]+[[item for sublist in trans_text_list[1] for item in sublist]]
+        final_text_list = [item for sublist in final_text_list for item in sublist]
+        print(f"final_text_list: {final_text_list}")
         ref_audio_len = audio.shape[-1] // hop_length
         if fix_duration is not None:
             duration = int(fix_duration * target_sample_rate / hop_length)
